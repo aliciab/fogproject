@@ -3,8 +3,8 @@
  * FOG Hook: HookDebugger
  *	Author:		Blackout
  *	Created:	8:57 AM 31/08/2011
- *	Revision:	$Revision$
- *	Last Update:	$LastChangedDate$
+ *	Revision:	$Revision: 2438 $
+ *	Last Update:	$LastChangedDate: 2014-10-19 10:09:51 -0400 (Sun, 19 Oct 2014) $
  ***/
 
 // HookDebugger class
@@ -23,9 +23,7 @@ class HookDebugger extends Hook
 	}
 }
 $HookDebugger = new HookDebugger();
-// Debug all events
-foreach ($HookManager->events AS $event)
-{
-	if ($event != 'CONTENT_DISPLAY')
-		$HookManager->register($event, array($HookDebugger, 'run'));
-}
+if (!$HookManager->events)
+	$HookManager->getEvents();
+foreach($HookManager->events AS $event)
+	$HookManager->register($event,array($HookDebugger,'run'));

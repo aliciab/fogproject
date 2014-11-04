@@ -1,180 +1,3 @@
-<<<<<<< HEAD
-<?php
-/** \class Image
-	Builds all the Image class attributes.  The way it pulls data from the database.
-*/
-class Image extends FOGController
-{
-	// Table
-	public $databaseTable = 'images';
-	
-	// Name -> Database field name
-	public $databaseFields = array(
-		'id' => 'imageID',
-		'name' => 'imageName',
-		'description' => 'imageDesc',
-		'path' => 'imagePath',
-		'createdTime' => 'imageDateTime',
-		'createdBy' => 'imageCreateBy',
-		'building' => 'imageBuilding',
-		'size' => 'imageSize',
-		'imageTypeID' => 'imageTypeID',
-		'storageGroupID' => 'imageNFSGroupID',
-		'osID' => 'imageOSID',
-		'size' => 'imageSize', 
-		'deployed' => 'imageLastDeploy',
-		'format' => 'imageFormat',
-		'magnet' => 'imageMagnetUri',
-	);
-
-	// Additional Fields
-	public $additionalFields = array(
-		'hosts',
-	);
-
-	// Overrides
-	private function loadHosts()
-	{
-		if (!$this->isLoaded('hosts'))
-		{
-			if ($this->get('id'))
-			{
-				$Hosts = $this->FOGCore->getClass('HostManager')->find(array('imageID' => $this->get('id')));
-				foreach($Hosts AS $Host)
-					$this->add('hosts', $Host);
-			}
-		}
-		return $this;
-	}
-
-	public function get($key = '')
-	{
-		if ($this->key($key) == 'hosts')
-			$this->loadHosts();
-		return parent::get($key);
-	}
-
-	public function set($key, $value)
-	{
-		if ($this->key($key) == 'hosts')
-		{
-			foreach((array)$value AS $Host)
-				$newValue[] = ($Host instanceof Host ? $Host : new Host($Host));
-			$value = (array)$newValue;
-		}
-		// Set
-		return parent::set($key, $value);
-	}
-
-	public function add($key, $value)
-	{
-		if ($this->key($key) == 'hosts' && !($value instanceof Host))
-		{
-			$this->loadHosts();
-			$value = new Host($value);
-		}
-		// Add
-		return parent::add($key, $value);
-	}
-
-	public function remove($key, $object)
-	{
-		if ($this->key($key) == 'hosts')
-			$this->loadHosts();
-		// Remove
-		return parent::remove($key, $object);
-	}
-
-	public function save()
-	{
-		parent::save();
-		if ($this->isLoaded('hosts'))
-		{
-			// Unset all hosts
-			foreach($this->FOGCore->getClass('HostManager')->find(array('imageID' => $this->get('id'))) AS $Host)
-			{
-				if(($Host instanceof Host) && $Host->isValid())
-					$Host->set('imageID', 0)->save();
-			}
-			// Reset the hosts necessary
-			foreach ((array)$this->get('hosts') AS $Host)
-			{
-				if (($Host instanceof Host) && $Host->isValid())
-					$Host->set('imageID', $this->get('id'))->save();
-			}
-		}
-		return $this;
-	}
-
-	public function addHost($addArray)
-	{
-		// Add
-		foreach((array)$addArray AS $item)
-			$this->add('hosts', $item);
-		// Return
-		return $this;
-	}
-
-	public function removeHost($removeArray)
-	{
-		// Iterate array (or other as array)
-		foreach((array)$removeArray AS $remove)
-			$this->remove('hosts', ($remove instanceof Host ? $remove : new Host((int)$remove)));
-		// Return
-		return $this;
-	}
-	
-	// Custom functions
-	/** getStorageGroup()
-		Gets the relevant StorageGroup class object for the image.
-	*/
-	public function getStorageGroup()
-	{
-		return new StorageGroup($this->get('storageGroupID'));
-	}
-	/** getOS()
-		Gets the relevant OS Class object for the image.
-	*/
-	public function getOS()
-	{
-		if ($this->get('osID'))
-			return new OS($this->get('osID'));
-		else
-			return new OS(array('id' => '0'));
-	}
-	/** getImageType()
-		Gets the relevant ImageType class object for the image.
-	*/
-	public function getImageType()
-	{
-		return new ImageType($this->get('imageTypeID'));
-	}
-	/** deleteImageFile()
-		This function just deletes the image file via FTP.
-		Only used if the user checks the Add File? checkbox.
-	*/
-	public function deleteImageFile()
-	{
-		$ftp = $GLOBALS['FOGFTP'];
-		$SN = $this->getStorageGroup()->getMasterStorageNode();
-		$SNME = ($SN && $SN->get('isEnabled') == '1' ? true : false);
-		if ($SNME)
-		{
-			$ftphost = $SN->get('ip');
-			$ftpuser = $SN->get('user');
-			$ftppass = $SN->get('pass');
-			$ftproot = rtrim($SN->get('path'),'/').'/'.$this->get('path');
-		}
-		$ftp->set('host',$ftphost)
-			->set('username',$ftpuser)
-			->set('password',$ftppass)
-			->connect();
-		if(!$ftp->delete($ftproot))
-			return false;
-		return true;
-	}
-}
-=======
 <?php
 /** \class Image
 	Builds all the Image class attributes.  The way it pulls data from the database.
@@ -196,7 +19,6 @@ class Image extends FOGController
 		'size' => 'imageSize',
 		'imageTypeID' => 'imageTypeID',
 		'imagePartitionTypeID' => 'imagePartitionTypeID',
-		'storageGroupID' => 'imageNFSGroupID',
 		'osID' => 'imageOSID',
 		'size' => 'imageSize', 
 		'deployed' => 'imageLastDeploy',
@@ -208,6 +30,7 @@ class Image extends FOGController
 	// Additional Fields
 	public $additionalFields = array(
 		'hosts',
+		'storageGroups',
 	);
 
 	// Overrides
@@ -224,11 +47,26 @@ class Image extends FOGController
 		}
 		return $this;
 	}
+	private function loadGroups()
+	{
+		if (!$this->isLoaded('storageGroups'))
+		{
+			if ($this->get('id'))
+			{
+				$Groups = $this->getClass('ImageAssociationManager')->find(array('imageID' => $this->get('id')));
+				foreach($Groups AS $Group)
+					$this->add('storageGroups', $Group->getStorageGroup());
+			}
+		}
+		return $this;
+	}
 
 	public function get($key = '')
 	{
 		if ($this->key($key) == 'hosts')
 			$this->loadHosts();
+		else if ($this->key($key) == 'storageGroups')
+			$this->loadGroups();
 		return parent::get($key);
 	}
 
@@ -238,6 +76,12 @@ class Image extends FOGController
 		{
 			foreach((array)$value AS $Host)
 				$newValue[] = ($Host instanceof Host ? $Host : new Host($Host));
+			$value = (array)$newValue;
+		}
+		else if ($this->key($key) == 'storageGroups')
+		{
+			foreach((array)$value AS $Group)
+				$newValue[] = ($Group instanceof StorageGroup ? $Group : new Group($Group));
 			$value = (array)$newValue;
 		}
 		// Set
@@ -251,6 +95,11 @@ class Image extends FOGController
 			$this->loadHosts();
 			$value = new Host($value);
 		}
+		else if ($this->key($key) == 'storageGroups' && !($value instanceof StorageGroup))
+		{
+			$this->loadGroups();
+			$value = new StorageGroup($value);
+		}
 		// Add
 		return parent::add($key, $value);
 	}
@@ -259,6 +108,8 @@ class Image extends FOGController
 	{
 		if ($this->key($key) == 'hosts')
 			$this->loadHosts();
+		else if ($this->key($key) == 'storageGroups')
+			$this->loadGroups();
 		// Remove
 		return parent::remove($key, $object);
 	}
@@ -281,6 +132,23 @@ class Image extends FOGController
 					$Host->set('imageID', $this->get('id'))->save();
 			}
 		}
+		if ($this->isLoaded('storageGroups'))
+		{
+			// Remove old rows
+			$this->getClass('ImageAssociationManager')->destroy(array('imageID' => $this->get('id')));
+			// Create Assoc
+			foreach((array)$this->get('storageGroups') AS $Group)
+			{
+				if (($Group instanceof StorageGroup) && $Group->isValid())
+				{
+					$NewGroup = new ImageAssociation(array(
+						'imageID' => $this->get('id'),
+						'storageGroupID' => $Group->get('id'),
+					));
+					$NewGroup->save();
+				}
+			}
+		}
 		return $this;
 	}
 
@@ -289,6 +157,14 @@ class Image extends FOGController
 		// Add
 		foreach((array)$addArray AS $item)
 			$this->add('hosts', $item);
+		// Return
+		return $this;
+	}
+	public function addGroup($addArray)
+	{
+		// Add
+		foreach((array)$addArray AS $item)
+			$this->add('storageGroups',$item);
 		// Return
 		return $this;
 	}
@@ -301,6 +177,15 @@ class Image extends FOGController
 		// Return
 		return $this;
 	}
+
+	public function removeGroup($removeArray)
+	{
+		// Iterate array (or other as array)
+		foreach((array)$removeArray AS $remove)
+			$this->remove('storageGroups', ($remove instanceof StorageGroup ? $remove : new StorageGroup((int)$remove)));
+		// Return
+		return $this;
+	}
 	
 	// Custom functions
 	/** getStorageGroup()
@@ -308,7 +193,10 @@ class Image extends FOGController
 	*/
 	public function getStorageGroup()
 	{
-		return new StorageGroup($this->get('storageGroupID'));
+		$StorageGroup = current((array)$this->get('storageGroups'));
+		if (!$StorageGroup || !$StorageGroup->isValid())
+			throw new Exception(__class__.' '._('does not have a storage group assigned').'.');
+		return $StorageGroup;
 	}
 	/** getOS()
 		Gets the relevant OS Class object for the image.
@@ -334,11 +222,11 @@ class Image extends FOGController
 	{
 		return new ImagePartitionType($this->get('imagePartitionTypeID'));
 	}
-	/** deleteImageFile()
-		This function just deletes the image file via FTP.
+	/** deleteFile()
+		This function just deletes the file(s) via FTP.
 		Only used if the user checks the Add File? checkbox.
 	*/
-	public function deleteImageFile()
+	public function deleteFile()
 	{
 		if ($this->get('protected'))
 			throw new Exception($this->foglang['ProtectedImage']);
@@ -364,4 +252,3 @@ class Image extends FOGController
 /* c-basic-offset: 4 */
 /* tab-width: 4 */
 /* End: */
->>>>>>> dev-branch

@@ -2,8 +2,8 @@
  * FOG Dashboard JS
  *	Author:		Blackout
  *	Created:	10:05 AM 16/04/2011
- *	Revision:	$Revision$
- *	Last Update:	$LastChangedDate$
+ *	Revision:	$Revision: 2430 $
+ *	Last Update:	$LastChangedDate: 2014-10-16 11:55:06 -0400 (Thu, 16 Oct 2014) $
  ***/
 
 // Language variables - move to PHP generated file to include
@@ -287,7 +287,7 @@ var Loader;
 	$.fn.fogTableInfo = function() {
 		// Add table header sorting information.
 		$('table:not(#search-content) > thead > tr > td').addClass('hand');
-		$('table:not(#search-content)').tablesorter({ sortList: [[0,0]] });
+		$('table:not(#search-content)').tablesorter();
 	}
 	
 	$.fn.fogPing = function(opts)

@@ -3,8 +3,8 @@
  * FOG Hook
  *	Author:		Blackout
  *	Created:	8:57 AM 31/08/2011
- *	Revision:	$Revision$
- *	Last Update:	$LastChangedDate$
+ *	Revision:	$Revision: 2422 $
+ *	Last Update:	$LastChangedDate: 2014-10-15 13:07:58 -0400 (Wed, 15 Oct 2014) $
  ***/
  
 abstract class Hook extends FOGBase
@@ -17,6 +17,7 @@ abstract class Hook extends FOGBase
 	public $logToFile = false;
 	public $logToBrowser = true;
 	public $FOGUser;
+	public $delformat;
 	public function __construct()
 	{
 		parent::__construct();
